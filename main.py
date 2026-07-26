@@ -29,7 +29,7 @@ if st.button("הפעל סריקה מלאה על כל מדדי השוק כעת"):
     status_text = st.empty()
     
     results = []
-    batch_size = 25  גודל אופטימלי למניעת חסימות שרת
+    batch_size = 25  # גודל אופטימלי למניעת חסימות שרת
     total_batches = (len(comprehensive_universe) + batch_size - 1) // batch_size
     
     try:
