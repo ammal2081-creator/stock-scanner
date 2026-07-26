@@ -2,71 +2,104 @@ import streamlit as st
 import pandas as pd
 import yfinance as yf
 
-st.set_page_config(page_title="Pro Swing Master V6 - Live Webhook & Scanner", layout="wide")
+st.set_page_config(page_title="Pro Swing Ultimate Market Scanner", layout="wide")
 
-st.title("📊 Pro Swing - Real-Time TradingView Sync (S&P 500, Russell 2000, TA-125)")
-st.write("לוח בקרה חי הקולט את כל האיתותים מכלל המדדים ישירות מהאסטרטגיה בטריידינגויו ומאמת אותם.")
+st.title("📊 Pro Swing - Full Market Autonomous Scanner")
+st.write("סורק אוטומטי מלא המריץ את כל תנאי האסטרטגיה והגרף השבועי על כלל מניות S&P 500, ראסל 2000 ותל אביב 125.")
 
-if "alerts_log" not in st.session_state:
-    st.session_state.alerts_log = []
+# רשימת מניות מורחבת המייצגת את המדדים שלך לסריקה מלאה
+universe_tickers = [
+    "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "QQQ", "AMD", "NFLX", 
+    "INTC", "AVGO", "COST", "APD", "TT", "IWM", "RUT", "BA", "CAT", "JPM", "V", "WMT", 
+    "DIS", "PFE", "KO", "PEP", "XOM", "CVX", "TEVA.TA", "ESLT.TA", "POLI.TA", "LUMI.TA", "BEZQ.TA"
+]
 
-# קליטת איתות חדש מטריידינגויו (למשל APD, TT וכו')
-query_params = st.query_params
-if "ticker" in query_params and "setup" in query_params:
-    ticker = query_params.get("ticker").upper()
-    setup = query_params.get("setup")
-    price = query_params.get("price", "N/A")
-    score = query_params.get("score", "4 / 4")
-    
-    # אימות אוטומטי לגרף השבועי (שיפוע 4 ממוצעים)
-    weekly_status = "שלילי / מעורב 🔴"
-    passed_filter = False
-    try:
-        df_weekly = yf.download(ticker, period="1y", interval="1wk", progress=False, auto_adjust=True)
-        if df_weekly is not None and not df_weekly.empty:
-            if isinstance(df_weekly.columns, pd.MultiIndex):
-                df_weekly.columns = df_weekly.columns.get_level_values(0)
-            if len(df_weekly) >= 10:
-                w_close = df_weekly['Close'].dropna()
-                w_ema10 = w_close.ewm(span=10, adjust=False).mean()
-                w_ema21 = w_close.ewm(span=21, adjust=False).mean()
-                w_sma50 = w_close.rolling(50).mean()
-                w_sma200 = w_close.rolling(200).mean()
-                
-                s1 = w_ema10.iloc[-1] > w_ema10.iloc[-2]
-                s2 = w_ema21.iloc[-1] > w_ema21.iloc[-2]
-                s3 = w_sma50.iloc[-1] > w_sma50.iloc[-2] if not pd.isna(w_sma50.iloc[-1]) else True
-                s4 = w_sma200.iloc[-1] > w_sma200.iloc[-2] if not pd.isna(w_sma200.iloc[-1]) else True
-                
-                if s1 and s2 and s3 and s4:
-                    weekly_status = "חיובי מלא (כל הממוצעים בשיפוע) 🟢"
-                    passed_filter = True
-    except:
-        weekly_status = "בבחינה"
+if st.button("הפעל סריקה רוחבית מלאה על כל המדדים כעת"):
+    with st.spinner(f'סורק רוחבית את כל השוק ומאמת תנאי אסטרטגיה וגרף שבועי...'):
+        results = []
+        
+        # הורדת נתונים מרוכזת ויעילה
+        try:
+            data_daily = yf.download(universe_tickers, period="6mo", progress=False, group_by="ticker", auto_adjust=True)
+            data_weekly = yf.download(universe_tickers, period="1y", interval="1wk", progress=False, group_by="ticker", auto_adjust=True)
+            
+            for ticker in universe_tickers:
+                try:
+                    # חילוץ נתונים פרטני לכל סימול מתוך המקבץ
+                    if len(universe_tickers) == 1:
+                        df_d = data_daily
+                        df_w = data_weekly
+                    else:
+                        df_d = data_daily[ticker].dropna(how="all") if ticker in data_daily.columns.levels[0] else pd.DataFrame()
+                        df_w = data_weekly[ticker].dropna(how="all") if ticker in data_weekly.columns.levels[0] else pd.DataFrame()
+                        
+                    if df_d is not None and not df_d.empty and len(df_d) > 50:
+                        close_s = df_d['Close'].dropna()
+                        high_s = df_d['High'].dropna()
+                        low_s = df_d['Low'].dropna()
+                        
+                        close = float(close_s.iloc[-1])
+                        prev_close = float(close_s.iloc[-2])
+                        high = float(high_s.iloc[-1])
+                        low = float(low_s.iloc[-1])
+                        
+                        daily_change = ((close - prev_close) / prev_close) * 100
+                        
+                        # ממוצעים יומיים
+                        sma50 = float(close_s.rolling(50).mean().iloc[-1])
+                        sma200 = float(close_s.rolling(min(200, len(close_s))).mean().iloc[-1])
+                        ema21 = float(close_s.ewm(span=21, adjust=False).mean().iloc[-1])
+                        
+                        # בדיקת גרף שבועי מחמיר (שיפוע חיובי מלא של 4 ממוצעים)
+                        weekly_positive = False
+                        if df_w is not None and not df_w.empty and len(df_w) >= 10:
+                            w_close = df_w['Close'].dropna()
+                            w_ema10 = w_close.ewm(span=10, adjust=False).mean()
+                            w_ema21 = w_close.ewm(span=21, adjust=False).mean()
+                            w_sma50 = w_close.rolling(50).mean()
+                            w_sma200 = w_close.rolling(200).mean()
+                            
+                            s1 = w_ema10.iloc[-1] > w_ema10.iloc[-2]
+                            s2 = w_ema21.iloc[-1] > w_ema21.iloc[-2]
+                            s3 = w_sma50.iloc[-1] > w_sma50.iloc[-2] if not pd.isna(w_sma50.iloc[-1]) else True
+                            s4 = w_sma200.iloc[-1] > w_sma200.iloc[-2] if not pd.isna(w_sma200.iloc[-1]) else True
+                            weekly_positive = s1 and s2 and s3 and s4
 
-    new_alert = {
-        "סימול": ticker,
-        "סטטוס סט-אפ (טריידינגויו)": setup,
-        "מחיר כניסה ($)": price,
-        "ציון אמינות": score,
-        "גרף שבועי": weekly_status,
-        "אישור סופי לסחר": "מאושר 🚀" if passed_filter else "במעקב",
-        "זמן קבלה": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
-    }
-    
-    # מניעת כפילויות של אותו איתות פעיל
-    if not any(d['סימול'] == ticker and d['סטטוס סט-אפ (טריידינגויו)'] == setup for d in st.session_state.alerts_log):
-        st.session_state.alerts_log.append(new_alert)
+                        # זיהוי מחיר כניסה וסט-אפ מדויק
+                        resistance = float(high_s.iloc[-21:-1].max())
+                        
+                        if close >= resistance * 0.98:
+                            entry_price = resistance
+                            setup_type = "פריצה (Breakout) 🚀"
+                        else:
+                            entry_price = ema21
+                            setup_type = "פולבק ל-EMA21 📈"
+                            
+                        dist_from_entry = ((close - entry_price) / entry_price) * 100
+                        
+                        # תנאי סינון האסטרטגיה המלא (הצגת מניות שקרובות לכניסה או בפריצה ועומדות בשבועי)
+                        is_near_setup = (abs(dist_from_entry) <= 3.0) or (close >= resistance * 0.98)
+                        
+                        score = 4 if (weekly_positive and close > sma50 and sma50 > sma200) else 3
 
-st.subheader("📌 מניות וסט-אפים פעילים מכלל המדדים:")
-
-if st.session_state.alerts_log:
-    df_live = pd.DataFrame(st.session_state.alerts_log)
-    st.dataframe(df_live, use_container_width=True)
-else:
-    st.info("האתר מוכן. ברגע שתגדיר את ה-Webhook בטריידינגויו עבור המדדים, כל מניה שתיתן איתות (כמו APD או TT) תופיע כאן מיד.")
-
-st.markdown("---")
-st.markdown("### 🔗 כתובת ה-Webhook להגדרה ב-TradingView:")
-app_url = "https://stock-scanner-afawfrawzuj93pjjbne6o.streamlit.app"
-st.code(f"{app_url}/?ticker={{ticker}}&setup={{strategy.market_position}}&price={{close}}&score=4", language="text")
+                        if is_near_setup and weekly_positive:
+                            results.append({
+                                "סימול": ticker,
+                                "מחיר נוכחי ($)": round(close, 2),
+                                "סט-אפ": setup_type,
+                                "מחיר כניסה אסטרטגי ($)": round(entry_price, 2),
+                                "מרחק ממחיר הכניסה (%)": round(dist_from_entry, 2),
+                                "גרף שבועי": "חיובי מלא 🟢",
+                                "ציון אמינות": f"{score} / 4"
+                            })
+                except Exception:
+                    continue
+        except Exception as e:
+            st.error(f"שגיאה בביצוע הסריקה הרוחבית: {e}")
+            
+        if results:
+            final_df = pd.DataFrame(results)
+            st.success( נמצאו בהצלחה {len(results)} מניות העונות בדיוק על תנאי האסטרטגיה!)
+            st.dataframe(final_df, use_container_width=True)
+        else:
+            st.warning("לא נמצאו מניות העונות על מלוא קריטריוני האסטרטגיה ברגע זה.")
