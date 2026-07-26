@@ -15,15 +15,13 @@ all_indices = {
 selected_group = st.selectbox("בחר קבוצת מדדים לסריקה:", list(all_indices.keys()))
 
 if st.button("הפעל סריקה מדויקת עם גרף שבועי ומחירים חיים"):
-    with st.spinner("שולף שערים מארה"ב ומהארץ, מנתח גרף שבועי ומחשב ציוני V6..."):
+    with st.spinner('שולף שערים מארה"ב ומהארץ, מנתח גרף שבועי ומחשב ציוני V6...'):
         tickers = all_indices[selected_group]
         results = []
         
         for ticker in tickers:
             try:
-                # שליפת נתונים יומיים
                 df_daily = yf.download(ticker, period="3mo", progress=False)
-                # שליפת נתונים שבועיים לצורך בדיקת גרף שבועי
                 df_weekly = yf.download(ticker, period="6mo", interval="1wk", progress=False)
                 
                 if df_daily is not None and not df_daily.empty:
@@ -38,14 +36,12 @@ if st.button("הפעל סריקה מדויקת עם גרף שבועי ומחיר
                         high = float(df_daily['High'].iloc[-1])
                         low = float(df_daily['Low'].iloc[-1])
                         
-                        # ממוצעים טכניים
                         sma50 = float(df_daily['Close'].rolling(50).mean().iloc[-1])
                         sma200 = float(df_daily['Close'].rolling(min(200, len(df_daily))).mean().iloc[-1])
                         ema21 = float(df_daily['Close'].ewm(span=21, adjust=False).mean().iloc[-1])
                         
                         dist_ema21 = ((close - ema21) / ema21) * 100
                         
-                        # בדיקת גרף שבועי חיובי (האם הנר השבועי האחרון סגור מעל השבוע הקודם)
                         weekly_trend = "שלילי"
                         if df_weekly is not None and len(df_weekly) >= 2:
                             w_close_curr = float(df_weekly['Close'].iloc[-1])
@@ -53,7 +49,6 @@ if st.button("הפעל סריקה מדויקת עם גרף שבועי ומחיר
                             if w_close_curr > w_close_prev:
                                 weekly_trend = "חיובי (עולה) 🟢"
                                 
-                        # חישוב ציון אמינות (Score 1 עד 4)
                         score = 0
                         if close > sma50: score += 1
                         if sma50 > sma200: score += 1
@@ -62,7 +57,6 @@ if st.button("הפעל סריקה מדויקת עם גרף שבועי ומחיר
                         
                         risk_pct = f"{score * 0.25}%" if score > 0 else "0%"
                         
-                        # זיהוי סט-אפ
                         resistance = float(df_daily['High'].iloc[-21:-1].max())
                         is_breakout = close >= resistance * 0.99
                         
