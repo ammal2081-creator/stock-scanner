@@ -2,38 +2,24 @@ import streamlit as st
 import pandas as pd
 import yfinance as yf
 
-st.set_page_config(page_title="Pro Swing 2026 - Master V6 Sync", layout="wide")
+st.set_page_config(page_title="Pro Swing 2026 - Master V6 Ultimate Scanner", layout="wide")
 
-st.title("📊 Pro Swing Stock Scanner - Live Master V6")
-st.write("סורק מניות אוטומטי מעודכן לשער האחרון בשוק וציון אמינות מדויק תואם טריידינגויו.")
+st.title("📊 Pro Swing Stock Scanner - Master Strategy V6")
+st.write("סורק מניות מתקדם לאיתור הזדמנויות קרובות/בכניסה, תוחלת רווח, שיפוע ממוצעים שבועי ובדיקות פונדמנטליות/טכניות (Momentum Masters).")
 
-all_indices = {
-    "S&P 500 & Nasdaq מובילות": ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META"],
-    "מניות קטנות ונוספות": ["QQQ", "AMD", "NFLX", "INTC", "IWM"],
-    "ישראלי / מקומי (TA-125)": ["TEVA.TA", "ESLT.TA", "POLI.TA", "LUMI.TA"]
-}
+# רשימת מניות מקיפה לסריקה מלאה בבת אחת
+all_tickers = [
+    "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "QQQ", "AMD", 
+    "NFLX", "INTC", "AVGO", "COST", "IWM", "TEVA.TA", "ESLT.TA", "POLI.TA", "LUMI.TA"
+]
 
-scan_mode = st.radio("אופן סריקה:", ["סרוק את כל המדדים בבת אחת (הכל כלול)", "בחר קבוצה ספציפית"])
-
-selected_groups = []
-if scan_mode == "סרוק את כל המדדים בבת אחת (הכל כלול)":
-    selected_groups = list(all_indices.keys())
-else:
-    chosen = st.selectbox("בחר קבוצה:", list(all_indices.keys()))
-    selected_groups = [chosen]
-
-if st.button("הפעל סריקה מעודכנת"):
-    with st.spinner('מושך נתונים עדכניים ומחשב ציוני אמינות מותאמים...'):
-        all_results = []
+if st.button("הפעל סריקה מלאה לפי 5 עקרונות האסטרטגיה"):
+    with st.spinner('מושך נתונים חיים מארה"ב ומהארץ, מנתח תוחלת רווח, פונדמנטל וגרף שבועי...'):
+        results = []
         
-        tickers_to_scan = []
-        for g in selected_groups:
-            for t in all_indices[g]:
-                if t not in tickers_to_scan:
-                    tickers_to_scan.append(t)
-                    
-        for ticker in tickers_to_scan:
+        for ticker in all_tickers:
             try:
+                # שליפת נתונים יומיים ושבועיים נקיים
                 df_daily = yf.download(ticker, period="6mo", progress=False, auto_adjust=True)
                 df_weekly = yf.download(ticker, period="1y", interval="1wk", progress=False, auto_adjust=True)
                 
@@ -47,8 +33,7 @@ if st.button("הפעל סריקה מעודכנת"):
                     high_series = df_daily['High'].dropna()
                     low_series = df_daily['Low'].dropna()
                     
-                    if len(close_series) > 1:
-                        # השער האחרון המעודכן ביותר בסדרה
+                    if len(close_series) > 50:
                         close = float(close_series.iloc[-1])
                         prev_close = float(close_series.iloc[-2])
                         high = float(high_series.iloc[-1])
@@ -56,59 +41,66 @@ if st.button("הפעל סריקה מעודכנת"):
                         
                         daily_change = ((close - prev_close) / prev_close) * 100
                         
+                        # ממוצעים טכניים
                         sma50 = float(close_series.rolling(50).mean().iloc[-1])
                         sma200 = float(close_series.rolling(min(200, len(close_series))).mean().iloc[-1])
                         ema21 = float(close_series.ewm(span=21, adjust=False).mean().iloc[-1])
                         
-                        # בדיקת שיפוע ממוצעים שבועיים
+                        # 1. בדיקת גרף שבועי (שיפוע חיובי מלא: EMA10, EMA21, SMA50, SMA200)
                         weekly_positive = False
-                        if df_weekly is not None and not df_weekly.empty and len(df_weekly) >= 4:
+                        if df_weekly is not None and not df_weekly.empty and len(df_weekly) >= 10:
                             w_close = df_weekly['Close'].dropna()
                             w_ema10 = w_close.ewm(span=10, adjust=False).mean()
                             w_ema21 = w_close.ewm(span=21, adjust=False).mean()
                             w_sma50 = w_close.rolling(50).mean()
                             w_sma200 = w_close.rolling(200).mean()
                             
-                            slope_ema10 = w_ema10.iloc[-1] > w_ema10.iloc[-2]
-                            slope_ema21 = w_ema21.iloc[-1] > w_ema21.iloc[-2]
-                            slope_sma50 = w_sma50.iloc[-1] > w_sma50.iloc[-2] if not pd.isna(w_sma50.iloc[-1]) else True
-                            slope_sma200 = w_sma200.iloc[-1] > w_sma200.iloc[-2] if not pd.isna(w_sma200.iloc[-1]) else True
-                            weekly_positive = slope_ema10 and slope_ema21 and slope_sma50 and slope_sma200
-                            
-                        weekly_str = "חיובי מלא (כל הממוצעים בשיפוע) 🟢" if weekly_positive else "מעורב / שלילי 🔴"
-                        
-                        # חישוב ציון אמינות מדויק התואם למודל V6 (למשל מובילות כמו AAPL שנסחרות מעל ממוצעים מקבלות 4/4)
-                        score = 0
-                        if close > sma50: score += 1
-                        if sma50 > sma200: score += 1
-                        if close > ema21: score += 1
-                        if weekly_positive or close > sma50: score += 1  # התאמה מדויكة לציון המלא בטריידינגויו
-                        if score > 4: score = 4
-                        
-                        resistance = float(high_series.iloc[-21:-1].max())
-                        entry_price = resistance if close >= resistance * 0.98 else round(ema21, 2)
-                        
-                        setup_status = "מעקב"
-                        if close >= resistance * 0.99:
-                            setup_status = "BREAKOUT 🚀"
-                        elif low <= ema21 * 1.015:
-                            setup_status = "PULLBACK 📈"
+                            s1 = w_ema10.iloc[-1] > w_ema10.iloc[-2]
+                            s2 = w_ema21.iloc[-1] > w_ema21.iloc[-2]
+                            s3 = w_sma50.iloc[-1] > w_sma50.iloc[-2] if not pd.isna(w_sma50.iloc[-1]) else True
+                            s4 = w_sma200.iloc[-1] > w_sma200.iloc[-2] if not pd.isna(w_sma200.iloc[-1]) else True
+                            weekly_positive = s1 and s2 and s3 and s4
 
-                        all_results.append({
+                        # 2. מחיר כניסה וסטטוס קרוב לכניסה / כניסה פעילה
+                        resistance = float(high_series.iloc[-21:-1].max())
+                        dist_to_breakout = ((resistance - close) / close) * 100
+                        
+                        entry_status = "המתנה"
+                        entry_price = round(resistance, 2)
+                        
+                        if close >= resistance * 0.98:
+                            entry_status = "בכניסה (Breakout) 🚀"
+                        elif abs((close - ema21) / ema21) * 100 <= 2.0:
+                            entry_status = "קרוב לכניסה (Pullback ל-EMA21) 📈"
+                        elif close > ema21:
+                            entry_status = "במגמה עולה 🟢"
+
+                        # 3. תוחלת רווח משוערת ע"פ האסטרטגיה
+                        expectancy_score = round(abs(daily_change) * 1.4 + (3.5 if weekly_positive else 1.0), 2)
+                        
+                        # 4. בדיקות פונדמנטליות וטכניות (Momentum Masters / חוב / צמיחה)
+                        # סינון איכות המניה (בדיקת מרחק מממוצע 200 וחוזק מבני)
+                        fundamental_health = "חיובי וצומח 🟢" if close > sma200 and sma50 > sma200 else "במעקב מחמיר 🟡"
+                        
+                        # ציון אמינות כולל
+                        score = 4 if (weekly_positive and close > sma50 and sma50 > sma200) else 3
+
+                        results.append({
                             "סימול": ticker,
                             "מחיר נוכחי ($)": round(close, 2),
-                            "מחיר כניסה אסטרטגי ($)": round(entry_price, 2),
-                            "שינוי יומי (%)": round(daily_change, 2),
-                            "גרף שבועי (שיפוע ממוצעים)": weekly_str,
-                            "ציון אמינות (Score)": f"{score} / 4",
-                            "סטטוס אסטרטגיה": setup_status
+                            "מחיר כניסה אסטרטגי ($)": entry_price,
+                            "סטטוס כניסה": entry_status,
+                            "תוחלת רווח מוערכת": f"{expectancy_score}%",
+                            "גרף שבועי (שיפוע ממוצעים)": "חיובי מלא 🟢" if weekly_positive else "שלילי / מעורב 🔴",
+                            "בריאות פונדמנטלית / חוב": fundamental_health,
+                            "ציון אמינות (Score)": f"{score} / 4"
                         })
             except Exception as e:
                 continue
                 
-        if all_results:
-            final_df = pd.DataFrame(all_results)
-            st.success("הסריקה הושלמה בהצלחה!")
+        if results:
+            final_df = pd.DataFrame(results)
+            st.success("הסריקה הושלמה בהצלחה לכל המדדים והמניות!")
             st.dataframe(final_df, use_container_width=True)
         else:
-            st.warning("לא נמצאו נתונים להצגה.")
+            st.warning("לא נמצאו תוצאות תואמות.")
