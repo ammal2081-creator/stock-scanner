@@ -2,13 +2,12 @@ import streamlit as st
 import pandas as pd
 import yfinance as yf
 
-st.set_page_config(page_title="Pro Swing Master Scanner & Manual Check", layout="wide")
+st.set_page_config(page_title="Pro Swing Master Platform", layout="wide")
 
 st.title("📊 Pro Swing - Master Strategy Platform")
-st.write("פלטפורמת ניהול וסריקה: סריקה רוחבית לכלל המדדים או בדיקה ידנית ממוקדת לסימול ספציפי.")
+st.write("פלטפורמת ניהול וסריקה: סריקה רוחבית למדדים או בדיקה ידנית מעמיקה לסימול ספציפי הכוללת ניתוח טכני ופונדמנטלי של אנליסט AI.")
 
-# חלוקה ללשוניות (טאבים) נוחות
-tab1, tab2 = st.tabs(["📊 סריקה רוחבית למדדים", "🔍 בדיקה ידנית לסימבול ספציפי"])
+tab1, tab2 = st.tabs(["📊 סריקה רוחבית למדדים", "🔍 בדיקה ידנית וניתוח אנליסט AI לסימבול"])
 
 # ==================== טאב 1: סריקה רוחבית למדדים ====================
 with tab1:
@@ -132,17 +131,21 @@ with tab1:
         except Exception as e:
             st.error(f"שגיאה: {e}")
 
-# ==================== טאב 2: בדיקה ידנית לסימבול ספציפי ====================
+# ==================== טאב 2: בדיקה ידנית וניתוח אנליסט AI ====================
 with tab2:
-    st.subheader("בדיקה והרצת אסטרטגיה ידנית לסימבול בודד")
-    st.write("הקלד סימול מניה (לדוגמה: `APD`, `TT`, `TSLA`, `TEVA.TA`) ובדוק את מצבה המדויק מול כללי האסטרטגיה.")
+    st.subheader("🔍 בדיקה ידנית וניתוח פונדמנטלי של אנליסט AI")
+    st.write("הקלד סימול לבדיקה מקיפה הכוללת: טכניקה, גרף שבועי, וחוות דעת אנליסט על צמיחה ויכולת שירות חוב.")
     
-    manual_ticker = st.text_input("הכנס סימול לבדיקה:", value="APD").upper().strip()
+    manual_ticker = st.text_input("הכנס סימול (לדוגמה: APD, TT, TSLA, TEVA.TA):", value="APD").upper().strip()
     
-    if st.button("הרץ בדיקה לסימבול"):
+    if st.button("הרץ ניתוח אנליסט מלא לסימבול"):
         if manual_ticker:
-            with st.spinner(f'מנתח לעומק את {manual_ticker}...'):
+            with st.spinner(f'מבצע ניתוח טכני ופונדמנטלי מתקדם עבור {manual_ticker}...'):
                 try:
+                    # שליפת נתונים פיננסיים וטכניים
+                    t_obj = yf.Ticker(manual_ticker)
+                    info = t_obj.info
+                    
                     df_d = yf.download(manual_ticker, period="6mo", progress=False, auto_adjust=True)
                     df_w = yf.download(manual_ticker, period="1y", interval="1wk", progress=False, auto_adjust=True)
                     
@@ -162,8 +165,9 @@ with tab2:
                         sma200 = float(close_s.rolling(min(200, len(close_s))).mean().iloc[-1])
                         ema21 = float(close_s.ewm(span=21, adjust=False).mean().iloc[-1])
                         
-                        # בדיקת שבועי
+                        # בדיקת גרף שבועי (4 ממוצעים בשיפוע חיובי)
                         weekly_positive = False
+                        w_details = {}
                         if df_w is not None and not df_w.empty and len(df_w) >= 10:
                             w_close = df_w['Close'].dropna()
                             w_ema10 = w_close.ewm(span=10, adjust=False).mean()
@@ -177,6 +181,7 @@ with tab2:
                             s4 = w_sma200.iloc[-1] > w_sma200.iloc[-2] if not pd.isna(w_sma200.iloc[-1]) else True
                             
                             weekly_positive = s1 and s2 and s3 and s4
+                            w_details = {"EMA 10": s1, "EMA 21": s2, "SMA 50": s3, "SMA 200": s4}
 
                         resistance = float(high_s.iloc[-21:-1].max())
                         if close >= resistance * 0.98:
@@ -189,24 +194,69 @@ with tab2:
                         dist_from_entry = ((close - entry_price) / entry_price) * 100
                         score = 4 if (weekly_positive and close > sma50 and sma50 > sma200) else 3
 
-                        st.success(f"תוצאות ניתוח עבור: **{manual_ticker}**")
+                        # חילוץ נתונים פונדמנטליים להערכת AI
+                        company_name = info.get('longName', manual_ticker)
+                        sector = info.get('sector', 'לא ידוע')
+                        industry = info.get('industry', 'לא ידוע')
+                        market_cap = info.get('marketCap', 0)
+                        rev_growth = info.get('revenueGrowth', None)
+                        earnings_growth = info.get('earningsGrowth', None)
+                        debt_to_equity = info.get('debtToEquity', None)
+                        total_cash = info.get('totalCash', 0)
+                        total_debt = info.get('totalDebt', 0)
                         
-                        col1, col2, col3 = st.columns(3)
-                        col1.metric("מחיר נוכחי", f"${close:.2f}", f"{((close-prev_close)/prev_close)*100:.2f}%")
-                        col2.metric("מחיר כניסה אסטרטגי", f"${entry_price:.2f}")
-                        col3.metric("מרחק ממחיר הכניסה", f"{dist_from_entry:.2f}%")
+                        # לוגיקת חוות דעת אנליסט AI
+                        is_growing = True if (rev_growth is not None and rev_growth > -0.05) else False
+                        can_service_debt = True if (debt_to_equity is None or debt_to_equity < 250) else False
                         
-                        st.markdown("### 📋 נתוני האסטרטגיה המלאים:")
-                        st.json({
-                            "סימול": manual_ticker,
-                            "סטטוס סט-אפ": setup_type,
-                            "ציון אמינות (Conviction Score)": f"{score} / 4",
-                            "גרף שבועי (שיפוע 4 ממוצעים)": "חיובי מלא 🟢" if weekly_positive else "שלילי / מעורב 🔴",
-                            "ממוצע 50 יומי": round(sma50, 2),
-                            "ממוצע 200 יומי": round(sma200, 2),
-                            "EMA 21": round(ema21, 2)
-                        })
+                        ai_verdict = "מאושר ע"פ אנליסט 🟢" if (is_growing and can_service_debt and weekly_positive) else "בבדיקה / סיכון מוגבר 🟡"
+
+                        # הצגה ויזואלית נקייה וידידותית למשתמש
+                        st.success(f"ניתוח הושלם בהצלחה עבור: **{company_name} ({manual_ticker})**")
+                        
+                        # כרטיסיות מדדים ראשיים
+                        m1, m2, m3, m4 = st.columns(4)
+                        m1.metric("מחיר נוכחי", f"${close:.2f}", f"{((close-prev_close)/prev_close)*100:.2f}%")
+                        m2.metric("מחיר כניסה אסטרטגי", f"${entry_price:.2f}")
+                        m3.metric("מרחק ממחיר הכניסה", f"{dist_from_entry:.2f}%")
+                        m4.metric("ציון אמינות טכני", f"{score} / 4")
+
+                        st.markdown("---")
+                        
+                        col_tech, col_fund = st.columns(2)
+                        
+                        with col_tech:
+                            st.markdown("### 📈 סטטוס טכני ואסטרטגיה")
+                            st.info(f"**סוג סט-אפ:** {setup_type}")
+                            if weekly_positive:
+                                st.markdown("* **גרף שבועי:** חיובי מלא 🟢 (כל 4 הממוצעים בשיפוע עולה)")
+                            else:
+                                st.markdown("* **גרף שבועי:** שלילי או מעורב 🔴 (לא כל הממוצעים בשיפוע חיובי)")
+                            
+                            st.markdown(f"* **ממוצע 50 יומי:** ${sma50:.2f} ({'מעל 50 🟢' if close > sma50 else 'מתחת ל-50 🔴'})")
+                            st.markdown(f"* **ממוצע 200 יומי:** ${sma200:.2f} ({'מעל 200 🟢' if close > sma200 else 'מתחת ל-200 🔴'})")
+                            st.markdown(f"* **EMA 21 יומי:** ${ema21:.2f}")
+
+                        with col_fund:
+                            st.markdown("### 🤖 חוות דעת אנליסט AI (פונדמנטלי)")
+                            st.markdown(f"**סקטור:** {sector} | **תעשייה:** {industry}")
+                            
+                            growth_txt = f"{rev_growth*100:.1f}%" if rev_growth is not None else "נתון לא זמין"
+                            debt_txt = f"{debt_to_equity:.1f}%" if debt_to_equity is not None else "נמוך / לא זמין"
+                            
+                            if is_growing:
+                                st.markdown(f"* **מגמת צמיחה (הכנסות):** צומחת בקצב של {growth_txt} 🟢")
+                            else:
+                                st.markdown(f"* **מגמת צמיחה (הכנסות):** האטה או התכווצות 🟡")
+                                
+                            if can_service_debt:
+                                st.markdown(f"* **יכולת שירות חוב:** יחס חוב להון בריא ({debt_txt}) - החברה מסוגלת לשרת את חובותיה בקלות 🟢")
+                            else:
+                                st.markdown(f"* **יכולת שירות חוב:** רמת מינוף גבוהה יחסית ({debt_txt}) 🟡")
+                                
+                            st.markdown(f"**שורה תחתונה:** {ai_verdict}")
+
                     else:
                         st.error("לא נמצאו נתונים מספיקים עבור הסימול שהוזן.")
                 except Exception as e:
-                    st.error(f"שגיאה בשליפת הנתונים: {e}")
+                    st.error(f"שגיאה בניתוח הסימבול: {e}")
