@@ -15,17 +15,15 @@ universe_tickers = [
 ]
 
 if st.button("הפעל סריקה רוחבית מלאה על כל המדדים כעת"):
-    with st.spinner(f'סורק רוחבית את כל השוק ומאמת תנאי אסטרטגיה וגרף שבועי...'):
+    with st.spinner('סורק רוחבית את כל השוק ומאמת תנאי אסטרטגיה וגרף שבועי...'):
         results = []
         
-        # הורדת נתונים מרוכזת ויעילה
         try:
             data_daily = yf.download(universe_tickers, period="6mo", progress=False, group_by="ticker", auto_adjust=True)
             data_weekly = yf.download(universe_tickers, period="1y", interval="1wk", progress=False, group_by="ticker", auto_adjust=True)
             
             for ticker in universe_tickers:
                 try:
-                    # חילוץ נתונים פרטני לכל סימול מתוך המקבץ
                     if len(universe_tickers) == 1:
                         df_d = data_daily
                         df_w = data_weekly
@@ -45,7 +43,6 @@ if st.button("הפעל סריקה רוחבית מלאה על כל המדדים �
                         
                         daily_change = ((close - prev_close) / prev_close) * 100
                         
-                        # ממוצעים יומיים
                         sma50 = float(close_s.rolling(50).mean().iloc[-1])
                         sma200 = float(close_s.rolling(min(200, len(close_s))).mean().iloc[-1])
                         ema21 = float(close_s.ewm(span=21, adjust=False).mean().iloc[-1])
@@ -65,7 +62,6 @@ if st.button("הפעל סריקה רוחבית מלאה על כל המדדים �
                             s4 = w_sma200.iloc[-1] > w_sma200.iloc[-2] if not pd.isna(w_sma200.iloc[-1]) else True
                             weekly_positive = s1 and s2 and s3 and s4
 
-                        # זיהוי מחיר כניסה וסט-אפ מדויק
                         resistance = float(high_s.iloc[-21:-1].max())
                         
                         if close >= resistance * 0.98:
@@ -77,7 +73,6 @@ if st.button("הפעל סריקה רוחבית מלאה על כל המדדים �
                             
                         dist_from_entry = ((close - entry_price) / entry_price) * 100
                         
-                        # תנאי סינון האסטרטגיה המלא (הצגת מניות שקרובות לכניסה או בפריצה ועומדות בשבועי)
                         is_near_setup = (abs(dist_from_entry) <= 3.0) or (close >= resistance * 0.98)
                         
                         score = 4 if (weekly_positive and close > sma50 and sma50 > sma200) else 3
@@ -99,7 +94,7 @@ if st.button("הפעל סריקה רוחבית מלאה על כל המדדים �
             
         if results:
             final_df = pd.DataFrame(results)
-            st.success( נמצאו בהצלחה {len(results)} מניות העונות בדיוק על תנאי האסטרטגיה!)
+            st.success(f"נמצאו בהצלחה {len(results)} מניות העונות בדיוק על תנאי האסטרטגיה!")
             st.dataframe(final_df, use_container_width=True)
         else:
             st.warning("לא נמצאו מניות העונות על מלוא קריטריוני האסטרטגיה ברגע זה.")
