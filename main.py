@@ -134,7 +134,7 @@ with tab1:
 
 # ==================== טאב 2: בדיקה ידנית לסימבול ספציפי ====================
 with tab2:
-    st.subheader("בדיקה והרצת אסטרטגיה ידנית לסימול בודד")
+    st.subheader("בדיקה והרצת אסטרטגיה ידנית לסימבול בודד")
     st.write("הקלד סימול מניה (לדוגמה: `APD`, `TT`, `TSLA`, `TEVA.TA`) ובדוק את מצבה המדויק מול כללי האסטרטגיה.")
     
     manual_ticker = st.text_input("הכנס סימול לבדיקה:", value="APD").upper().strip()
@@ -164,7 +164,6 @@ with tab2:
                         
                         # בדיקת שבועי
                         weekly_positive = False
-                        w_status_details = []
                         if df_w is not None and not df_w.empty and len(df_w) >= 10:
                             w_close = df_w['Close'].dropna()
                             w_ema10 = w_close.ewm(span=10, adjust=False).mean()
@@ -190,7 +189,7 @@ with tab2:
                         dist_from_entry = ((close - entry_price) / entry_price) * 100
                         score = 4 if (weekly_positive and close > sma50 and sma50 > sma200) else 3
 
-                        st.success(תוצאות ניתוח עבור: **{manual_ticker}**)
+                        st.success(f"תוצאות ניתוח עבור: **{manual_ticker}**")
                         
                         col1, col2, col3 = st.columns(3)
                         col1.metric("מחיר נוכחי", f"${close:.2f}", f"{((close-prev_close)/prev_close)*100:.2f}%")
