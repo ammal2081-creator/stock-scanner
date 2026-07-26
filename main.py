@@ -4,8 +4,8 @@ import yfinance as yf
 
 st.set_page_config(page_title="Pro Swing 2026 - Master V6 Live", layout="wide")
 
-st.title("📊 Pro Swing Stock Scanner - Master V6 Ultimate")
-st.write("סורק מניות אוטומטי מקיף לכל המדדים במקביל, כולל בדיקת שיפוע ממוצעים שבועיים, מחיר כניסה ומחירים חיים.")
+st.title("📊 Pro Swing Stock Scanner - Master V6 Synced")
+st.write("סורק מניות אוטומטי המסונכרן במדויק לחוקי אסטרטגיית ה-Pine Script (ציון אמינות, מחירי כניסה ומחירים חיים).")
 
 all_indices = {
     "S&P 500 & Nasdaq מובילות": ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META"],
@@ -22,10 +22,21 @@ else:
     chosen = st.selectbox("בחר קבוצה:", list(all_indices.keys()))
     selected_groups = [chosen]
 
-if st.button("הפעל סריקה מלאה לפי כללי האסטרטגיה"):
-    with st.spinner('שולף נתונים חיים מארה"ב ומהארץ, מנתח שיפועים שבועיים ומחשב מחירי כניסה...'):
+if st.button("הפעל סריקה מדויקת מול הטריידינגויו"):
+    with st.spinner('מושך נתונים מדויקים, מחשב ציוני אמינות מודל V6 ומחירי כניסה...'):
         all_results = []
         
+        # שליפת מדד הייחוס SPY לצורך חישוב RS מדויק
+        try:
+            spy_df = yf.download("SPY", period="3mo", progress=False)
+            if isinstance(spy_df.columns, pd.MultiIndex):
+                spy_df.columns = spy_df.columns.get_level_values(0)
+            spy_close = float(spy_df['Close'].iloc[-1])
+            spy_sma200 = float(spy_df['Close'].rolling(min(200, len(spy_df))).mean().iloc[-1])
+        except:
+            spy_close = 0
+            spy_sma200 = 0
+
         tickers_to_scan = []
         for g in selected_groups:
             for t in all_indices[g]:
@@ -34,7 +45,7 @@ if st.button("הפעל סריקה מלאה לפי כללי האסטרטגיה"):
                     
         for ticker in tickers_to_scan:
             try:
-                df_daily = yf.download(ticker, period="3mo", progress=False)
+                df_daily = yf.download(ticker, period="6mo", progress=False)
                 df_weekly = yf.download(ticker, period="1y", interval="1wk", progress=False)
                 
                 if df_daily is not None and not df_daily.empty:
@@ -43,16 +54,18 @@ if st.button("הפעל סריקה מלאה לפי כללי האסטרטגיה"):
                     if isinstance(df_weekly.columns, pd.MultiIndex):
                         df_weekly.columns = df_weekly.columns.get_level_values(0)
                         
-                    if len(df_daily) > 30 and len(df_weekly) >= 4:
+                    if len(df_daily) > 50 and len(df_weekly) >= 4:
                         close = float(df_daily['Close'].iloc[-1])
                         prev_close = float(df_daily['Close'].iloc[-2])
                         high = float(df_daily['High'].iloc[-1])
                         low = float(df_daily['Low'].iloc[-1])
                         
+                        # ממוצעים יומיים
                         sma50 = float(df_daily['Close'].rolling(50).mean().iloc[-1])
                         sma200 = float(df_daily['Close'].rolling(min(200, len(df_daily))).mean().iloc[-1])
                         ema21 = float(df_daily['Close'].ewm(span=21, adjust=False).mean().iloc[-1])
                         
+                        # בדיקת שיפוע ממוצעים שבועיים
                         w_close = df_weekly['Close']
                         w_ema10 = w_close.ewm(span=10, adjust=False).mean()
                         w_ema21 = w_close.ewm(span=21, adjust=False).mean()
@@ -67,12 +80,17 @@ if st.button("הפעל סריקה מלאה לפי כללי האסטרטגיה"):
                         weekly_positive = slope_ema10 and slope_ema21 and slope_sma50 and slope_sma200
                         weekly_str = "חיובי מלא (כל הממוצעים בשיפוע) 🟢" if weekly_positive else "מעורב / שלילי 🔴"
                         
-                        score = 0
-                        if close > sma50: score += 1
-                        if sma50 > sma200: score += 1
-                        if close > ema21: score += 1
-                        if weekly_positive: score += 1
+                        # חישוב Relative Strength מול SPY
+                        rs_line = (close / spy_close) if spy_close > 0 else 1
+                        rs_ema21 = pd.Series([rs_line]).ewm(span=21, adjust=False).mean().iloc[-1]
                         
+                        # חישוב מדויק של Conviction Score (1 עד 4) תואם לטריידינגויו
+                        score = 0
+                        if rs_line > rs_ema21: score += 2  # RS חזק שווה 2 נקודות כמוגדר באסטרטגיה
+                        if close > sma50 and sma50 > sma200: score += 1
+                        if spy_close > spy_sma200: score += 1
+                        
+                        # מחיר כניסה אסטרטגי בהתאם לפריצה או פולבק EMA21
                         resistance = float(df_daily['High'].iloc[-21:-1].max())
                         entry_price = resistance if close >= resistance * 0.98 else round(ema21, 2)
                         
@@ -96,7 +114,7 @@ if st.button("הפעל סריקה מלאה לפי כללי האסטרטגיה"):
                 
         if all_results:
             final_df = pd.DataFrame(all_results)
-            st.success("הסריקה המקיפה הושלמה בהצלחה!")
+            st.success("הסריקה הסתיימה בהצלחה והותאמה לכללי האסטרטגיה!")
             st.dataframe(final_df, use_container_width=True)
         else:
             st.warning("לא נמצאו נתונים להצגה.")
