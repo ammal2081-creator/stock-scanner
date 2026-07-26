@@ -23,7 +23,7 @@ else:
     selected_groups = [chosen]
 
 if st.button("הפעל סריקה מלאה לפי כללי האסטרטגיה"):
-    with st.spinner("שולף נתונים חיים מארה"ב ומהארץ, מנתח שיפוועים שבועיים ומחשב מחירי כניסה..."):
+    with st.spinner('שולף נתונים חיים מארה"ב ומהארץ, מנתח שיפועים שבועיים ומחשב מחירי כניסה...'):
         all_results = []
         
         tickers_to_scan = []
@@ -49,12 +49,10 @@ if st.button("הפעל סריקה מלאה לפי כללי האסטרטגיה"):
                         high = float(df_daily['High'].iloc[-1])
                         low = float(df_daily['Low'].iloc[-1])
                         
-                        # ממוצעים יומיים
                         sma50 = float(df_daily['Close'].rolling(50).mean().iloc[-1])
                         sma200 = float(df_daily['Close'].rolling(min(200, len(df_daily))).mean().iloc[-1])
                         ema21 = float(df_daily['Close'].ewm(span=21, adjust=False).mean().iloc[-1])
                         
-                        # בדיקת שיפוע ממוצעים שבועיים (EMA10, EMA21, SMA50, SMA200 בשיפוע חיובי)
                         w_close = df_weekly['Close']
                         w_ema10 = w_close.ewm(span=10, adjust=False).mean()
                         w_ema21 = w_close.ewm(span=21, adjust=False).mean()
@@ -69,14 +67,12 @@ if st.button("הפעל סריקה מלאה לפי כללי האסטרטגיה"):
                         weekly_positive = slope_ema10 and slope_ema21 and slope_sma50 and slope_sma200
                         weekly_str = "חיובי מלא (כל הממוצעים בשיפוע) 🟢" if weekly_positive else "מעורב / שלילי 🔴"
                         
-                        # ציון אמינות (Score)
                         score = 0
                         if close > sma50: score += 1
                         if sma50 > sma200: score += 1
                         if close > ema21: score += 1
                         if weekly_positive: score += 1
                         
-                        # חישוב מחיר כניסה משוער לפי אסטרטגיה (פריצה או פולבק סגירה)
                         resistance = float(df_daily['High'].iloc[-21:-1].max())
                         entry_price = resistance if close >= resistance * 0.98 else round(ema21, 2)
                         
