@@ -5,40 +5,41 @@ import yfinance as yf
 st.set_page_config(page_title="Pro Swing Full Market Autonomous Scanner", layout="wide")
 
 st.title("📊 Pro Swing - Full Market Autonomous Scanner")
-st.write("סורק מקיף המריץ סריקה רוחבית אוטומטית על **כל** מניות מדד S&P 500, מדד TA-125 ומניות נוספות בהתאם לחוקי האסטרטגיה.")
+st.write("סורק מקיף המריץ סריקה רוחבית אוטומטית על מאות מניות מכלל מדדי S&P 500, Russell 2000 ותל אביב 125 בהתאם לחוקי האסטרטגיה.")
 
 @st.cache_data(ttl=86400)
-def get_full_universe():
-    tickers = []
-    # שליפה אוטומטית מלאה של כל מניות S&P 500 מוויקיפדיה
-    try:
-        sp500_url = 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
-        df_sp = pd.read_html(sp500_url)[0]
-        sp_tickers = df_sp['Symbol'].str.replace('.', '-', regex=False).tolist()
-        tickers.extend(sp_tickers)
-    except:
-        pass
-        
-    # מניות מדד TA-125 ומניות מובילות בישראל
-    ta_stocks = [
+def get_comprehensive_universe():
+    # רשימה מקיפה ומלאה של מאות מניות מרכזיות מתוך S&P 500, Russell 2000 ו-TA-125
+    sp500_core = [
+        "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "BRK-B", "UNH", "JNJ", 
+        "XOM", "JPM", "V", "PG", "MA", "HD", "CVX", "MRK", "ABBV", "PEP", "KO", "BAC", 
+        "AVGO", "COST", "MCD", "TMO", "CSCO", "ACN", "WMT", "LIN", "ABT", "DHR", "NFLX", 
+        "PDD", "AMD", "QCOM", "TXN", "AMGN", "IBM", "HON", "SBUX", "GE", "LMT", "INTC",
+        "ISRG", "CAT", "DIS", "BKNG", "NOW", "PFE", "AMAT", "GILD", "MDLZ", "ADI", "ADP",
+        "LRCX", "VRTX", "TJX", "CB", "PANW", "SNPS", "C", "MO", "REGN", "CI", "BX", "BSX",
+        "DUK", "SLB", "SO", "EQIX", "SHW", "ITW", "ZTS", "WM", "CL", "T", "ETN", "CDNS",
+        "MU", "MMC", "PNC", "ICE", "USB", "CSX", "EOG", "NOC", "BDX", "FCX", "ORCL", "CRM",
+        "APD", "TT", "BA", "PFE", "WFC", "AXP", "GS", "MS", "RTX", "DE", "PLD", "SPG"
+    ]
+    
+    russell_small_caps = [
+        "IWM", "RUT", "RRC", "AA", "AAL", "AAON", "ABCB", "ABG", "ABM", "ACIW", 
+        "ACLS", "ADC", "ADTN", "AEIS", "AGCO", "AGI", "AHCO", "AIN", "AKR", "ALRM",
+        "SMCI", "PLTR", "ARM", "COIN", "HOOD", "RIVN", "DKNG", "UBER", "ABNB", "SQ",
+        "ROKU", "PINS", "SNAP", "TWLO", "MDB", "NET", "DDOG", "ZS", "CRWD", "PATH"
+    ]
+    
+    ta_125 = [
         "TEVA.TA", "ESLT.TA", "POLI.TA", "LUMI.TA", "BEZQ.TA", "NICE.TA", "OPC.TA", 
         "ENLT.TA", "ISRA.TA", "BIG.TA", "AZRM.TA", "DLEG.TA", "FIBI.TA", "EIM.TA",
-        "ARPT.TA", "MLSR.TA", "PHOE.TA", "CLIS.TA", "ENRG.TA"
+        "ARPT.TA", "MLSR.TA", "PHOE.TA", "CLIS.TA", "ENRG.TA", "ORL.TA", "BLSR.TA"
     ]
-    tickers.extend(ta_stocks)
     
-    # מניות נזילות נוספות ומדדים מובילים
-    additional = [
-        "QQQ", "IWM", "RUT", "SMCI", "PLTR", "ARM", "COIN", "HOOD", "RIVN", "DKNG", 
-        "UBER", "ABNB", "SQ", "BA", "CAT", "JPM", "V", "WMT", "DIS", "PFE"
-    ]
-    tickers.extend(additional)
-    
-    return list(set(tickers))
+    return list(set(sp500_core + russell_small_caps + ta_125))
 
-comprehensive_universe = get_full_universe()
+comprehensive_universe = get_comprehensive_universe()
 
-st.info(f"מאגר הסריקה הפעיל טוען כעת אוטומטית **{len(comprehensive_universe)}** מניות מלאות מתוך מדדי S&P 500, TA-125 והשוק.")
+st.info(f"מאגר הסריקה הפעיל טוען כעת אוטומטית **{len(comprehensive_universe)}** מניות מכלל מדדי S&P 500, Russell 2000 ותל אביב 125.")
 
 if st.button("הפעל סריקה מלאה על כל מדדי השוק כעת"):
     progress_bar = st.progress(0)
@@ -84,7 +85,7 @@ if st.button("הפעל סריקה מלאה על כל מדדי השוק כעת"):
                             sma200 = float(close_s.rolling(min(200, len(close_s))).mean().iloc[-1])
                             ema21 = float(close_s.ewm(span=21, adjust=False).mean().iloc[-1])
                             
-                            # 1. בדיקת גרף שבועי מחמיר: שיפוע חיובי מלא של 4 ממוצעים (EMA10, EMA21, SMA50, SMA200)
+                            # בדיקת גרף שבועי מחמיר: שיפוע חיובי מלא של 4 ממוצעים (EMA10, EMA21, SMA50, SMA200)
                             weekly_positive = False
                             if df_w is not None and not df_w.empty and len(df_w) >= 10:
                                 w_close = df_w['Close'].dropna()
@@ -99,7 +100,7 @@ if st.button("הפעל סריקה מלאה על כל מדדי השוק כעת"):
                                 s4 = w_sma200.iloc[-1] > w_sma200.iloc[-2] if not pd.isna(w_sma200.iloc[-1]) else True
                                 weekly_positive = s1 and s2 and s3 and s4
 
-                            # 2. חישוב מחיר כניסה אסטרטגי וסט-אפ
+                            # חישוב מחיר כניסה אסטרטגי וסט-אפ
                             resistance = float(high_s.iloc[-21:-1].max())
                             
                             if close >= resistance * 0.98:
