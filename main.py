@@ -142,7 +142,6 @@ with tab2:
         if manual_ticker:
             with st.spinner(f'מבצע ניתוח טכני ופונדמנטלי מתקדם עבור {manual_ticker}...'):
                 try:
-                    # שליפת נתונים פיננסיים וטכניים
                     t_obj = yf.Ticker(manual_ticker)
                     info = t_obj.info
                     
@@ -165,7 +164,6 @@ with tab2:
                         sma200 = float(close_s.rolling(min(200, len(close_s))).mean().iloc[-1])
                         ema21 = float(close_s.ewm(span=21, adjust=False).mean().iloc[-1])
                         
-                        # בדיקת גרף שבועי (4 ממוצעים בשיפוע חיובי)
                         weekly_positive = False
                         w_details = {}
                         if df_w is not None and not df_w.empty and len(df_w) >= 10:
@@ -194,27 +192,19 @@ with tab2:
                         dist_from_entry = ((close - entry_price) / entry_price) * 100
                         score = 4 if (weekly_positive and close > sma50 and sma50 > sma200) else 3
 
-                        # חילוץ נתונים פונדמנטליים להערכת AI
                         company_name = info.get('longName', manual_ticker)
                         sector = info.get('sector', 'לא ידוע')
                         industry = info.get('industry', 'לא ידוע')
-                        market_cap = info.get('marketCap', 0)
                         rev_growth = info.get('revenueGrowth', None)
-                        earnings_growth = info.get('earningsGrowth', None)
                         debt_to_equity = info.get('debtToEquity', None)
-                        total_cash = info.get('totalCash', 0)
-                        total_debt = info.get('totalDebt', 0)
                         
-                        # לוגיקת חוות דעת אנליסט AI
                         is_growing = True if (rev_growth is not None and rev_growth > -0.05) else False
                         can_service_debt = True if (debt_to_equity is None or debt_to_equity < 250) else False
                         
-                        ai_verdict = "מאושר ע"פ אנליסט 🟢" if (is_growing and can_service_debt and weekly_positive) else "בבדיקה / סיכון מוגבר 🟡"
+                        ai_verdict = 'מאושר ע"פ אנליסט 🟢' if (is_growing and can_service_debt and weekly_positive) else 'בבדיקה / סיכון מוגבר 🟡'
 
-                        # הצגה ויזואלית נקייה וידידותית למשתמש
                         st.success(f"ניתוח הושלם בהצלחה עבור: **{company_name} ({manual_ticker})**")
                         
-                        # כרטיסיות מדדים ראשיים
                         m1, m2, m3, m4 = st.columns(4)
                         m1.metric("מחיר נוכחי", f"${close:.2f}", f"{((close-prev_close)/prev_close)*100:.2f}%")
                         m2.metric("מחיר כניסה אסטרטגי", f"${entry_price:.2f}")
