@@ -2,40 +2,56 @@ import streamlit as st
 import pandas as pd
 import yfinance as yf
 
-st.set_page_config(page_title="Pro Swing Ultimate Full Market Scanner", layout="wide")
+st.set_page_config(page_title="Pro Swing Full Market Autonomous Scanner", layout="wide")
 
 st.title("📊 Pro Swing - Full Market Autonomous Scanner")
-st.write("סורק מקיף המריץ סריקה רוחבית על מאות מניות מכלל מדדי S&P 500, Russell 2000 ותל אביב 125 בהתאם לחוקי האסטרטגיה המלאים.")
+st.write("סורק מקיף המריץ סריקה רוחבית אוטומטית על **כל** מניות מדד S&P 500, מדד TA-125 ומניות נוספות בהתאם לחוקי האסטרטגיה.")
 
-# רשימת מניות רחבה המייצגת את כלל המדדים לסריקה מרוכזת
-comprehensive_universe = [
-    # מובילות S&P 500 & Nasdaq
-    "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "QQQ", "AMD", "NFLX", 
-    "INTC", "AVGO", "COST", "APD", "TT", "BA", "CAT", "JPM", "V", "WMT", "DIS", "PFE", 
-    "KO", "PEP", "XOM", "CVX", "JNJ", "UNH", "HD", "PG", "MA", "ABBV", "MRK", "BAC", 
-    "CRM", "ACN", "LLY", "QCOM", "TXN", "AMGN", "IBM", "HON", "SBUX", "GE", "LMT",
-    # מניות קטנות ונוספות (Russell / Small Caps)
-    "IWM", "RUT", "RRC", "AA", "AAL", "AAON", "ABCB", "ABG", "ABM", "ACIW", 
-    "ACLS", "ADC", "ADTN", "AEIS", "AGCO", "AGI", "AHCO", "AIN", "AKR", "ALRM",
-    "SMCI", "PLTR", "ARM", "COIN", "HOOD", "RIVN", "DKNG", "UBER", "ABNB", "SQ",
-    # ישראלי / מקומי (TA-125)
-    "TEVA.TA", "ESLT.TA", "POLI.TA", "LUMI.TA", "BEZQ.TA", "NICE.TA", "OPC.TA", "ENLT.TA"
-]
+@st.cache_data(ttl=86400)
+def get_full_universe():
+    tickers = []
+    # שליפה אוטומטית מלאה של כל מניות S&P 500 מוויקיפדיה
+    try:
+        sp500_url = 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
+        df_sp = pd.read_html(sp500_url)[0]
+        sp_tickers = df_sp['Symbol'].str.replace('.', '-', regex=False).tolist()
+        tickers.extend(sp_tickers)
+    except:
+        pass
+        
+    # מניות מדד TA-125 ומניות מובילות בישראל
+    ta_stocks = [
+        "TEVA.TA", "ESLT.TA", "POLI.TA", "LUMI.TA", "BEZQ.TA", "NICE.TA", "OPC.TA", 
+        "ENLT.TA", "ISRA.TA", "BIG.TA", "AZRM.TA", "DLEG.TA", "FIBI.TA", "EIM.TA",
+        "ARPT.TA", "MLSR.TA", "PHOE.TA", "CLIS.TA", "ENRG.TA"
+    ]
+    tickers.extend(ta_stocks)
+    
+    # מניות נזילות נוספות ומדדים מובילים
+    additional = [
+        "QQQ", "IWM", "RUT", "SMCI", "PLTR", "ARM", "COIN", "HOOD", "RIVN", "DKNG", 
+        "UBER", "ABNB", "SQ", "BA", "CAT", "JPM", "V", "WMT", "DIS", "PFE"
+    ]
+    tickers.extend(additional)
+    
+    return list(set(tickers))
 
-st.info(f"מאגר הסריקה הפעיל מוגדר כעת ל-{len(comprehensive_universe)} מניות מרכזיות מתוך מדדי S&P 500, Russell 2000 ותל אביב 125.")
+comprehensive_universe = get_full_universe()
+
+st.info(f"מאגר הסריקה הפעיל טוען כעת אוטומטית **{len(comprehensive_universe)}** מניות מלאות מתוך מדדי S&P 500, TA-125 והשוק.")
 
 if st.button("הפעל סריקה מלאה על כל מדדי השוק כעת"):
     progress_bar = st.progress(0)
     status_text = st.empty()
     
     results = []
-    batch_size = 25  # גודל אופטימלי למניעת חסימות שרת
+    batch_size = 30
     total_batches = (len(comprehensive_universe) + batch_size - 1) // batch_size
     
     try:
         for b_idx, i in enumerate(range(0, len(comprehensive_universe), batch_size)):
             batch = comprehensive_universe[i:i+batch_size]
-            status_text.text(f"סורק קבוצה {b_idx + 1} מתוך {total_batches}...")
+            status_text.text(f"סורק קבוצה {b_idx + 1} מתוך {total_batches} ({len(results)} תוצאות נמצאו עד כה)...")
             progress_bar.progress((b_idx + 1) / total_batches)
             
             try:
@@ -56,12 +72,13 @@ if st.button("הפעל סריקה מלאה על כל מדדי השוק כעת"):
                             high_s = df_d['High'].dropna()
                             low_s = df_d['Low'].dropna()
                             
+                            if len(close_s) < 50:
+                                continue
+                                
                             close = float(close_s.iloc[-1])
                             prev_close = float(close_s.iloc[-2])
                             high = float(high_s.iloc[-1])
                             low = float(low_s.iloc[-1])
-                            
-                            daily_change = ((close - prev_close) / prev_close) * 100
                             
                             sma50 = float(close_s.rolling(50).mean().iloc[-1])
                             sma200 = float(close_s.rolling(min(200, len(close_s))).mean().iloc[-1])
@@ -118,10 +135,10 @@ if st.button("הפעל סריקה מלאה על כל מדדי השוק כעת"):
         
         if results:
             final_df = pd.DataFrame(results)
-            st.success(f"הסריקה הושלמה בהצלחה! נמצאו {len(results)} מניות העונות בדיוק על תנאי האסטרטגיה מכלל המדדים.")
+            st.success(f"הסריקה הושלמה בהצלחה! סומנו ונמצאו {len(results)} מניות העונות בדיוק על תנאי האסטרטגיה מתוך כלל המדדים.")
             st.dataframe(final_df, use_container_width=True)
         else:
-            st.warning("הסריקה הסתיימה בהצלחה, אך לא נמצאו ברגע זה מניות העונות על מלוא הקריטריונים המחמירים של האסטרטגיה.")
+            st.warning("הסריקה הסתיימה בהצלחה על כל המניות, אך לא נמצאו ברגע זה מניות העונות על מלוא הקריטריונים המחמירים.")
             
     except Exception as e:
         st.error(f"שגיאה כללית בריצת הסריקה: {e}")
