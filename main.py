@@ -5,9 +5,9 @@ import yfinance as yf
 st.set_page_config(page_title="Pro Swing Master Platform", layout="wide")
 
 st.title("📊 Pro Swing - Master Strategy Platform")
-st.write("פלטפורמת ניהול וסריקה: סריקה רוחבית למדדים או בדיקה ידנית מעמיקה לסימול ספציפי הכוללת ניתוח טכני ופונדמנטלי של אנליסט AI.")
+st.write("פלטפורמת ניהול וסריקה: סריקה רוחבית למדדים או בדיקה ידנית מעמיקה לסימול ספציפי הכוללת ניתוח אנליסט AI ופרספקטיבה ממומחי 'מומנטום מאסטרס'.")
 
-tab1, tab2 = st.tabs(["📊 סריקה רוחבית למדדים", "🔍 בדיקה ידנית וניתוח אנליסט AI לסימבול"])
+tab1, tab2 = st.tabs(["📊 סריקה רוחבית למדדים", "🔍 בדיקה ידנית וניתוח מומחי מומנטום מאסטרס"])
 
 # ==================== טאב 1: סריקה רוחבית למדדים ====================
 with tab1:
@@ -131,22 +131,22 @@ with tab1:
         except Exception as e:
             st.error(f"שגיאה: {e}")
 
-# ==================== טאב 2: בדיקה ידנית וניתוח אנליסט AI ====================
+# ==================== טאב 2: בדיקה ידנית וניתוח מומחי מומנטום מאסטרס ====================
 with tab2:
-    st.subheader("🔍 בדיקה ידנית וניתוח פונדמנטלי של אנליסט AI")
-    st.write("הקלד סימול לבדיקה מקיפה הכוללת: טכניקה, גרף שבועי, וחוות דעת אנליסט על צמיחה ויכולת שירות חוב.")
+    st.subheader("🔍 בדיקה ידנית, ניתוח אנליסט AI ופרספקטיבת מומחי 'מומנטום מאסטרס'")
+    st.write("הקלד סימול לבדיקה הכוללת: ניתוח טכני, פונדמנטלי, וחוות דעת מפורטת של מארק מינרוויני, דייוויד ראיין, דן זנגר ומארק ריצ'י השני.")
     
     manual_ticker = st.text_input("הכנס סימול (לדוגמה: APD, TT, TSLA, TEVA.TA):", value="APD").upper().strip()
     
-    if st.button("הרץ ניתוח אנליסט מלא לסימבול"):
+    if st.button("הרץ ניתוח מקיף וחוות דעת מאסטרים"):
         if manual_ticker:
-            with st.spinner(f'מבצע ניתוח טכני ופונדמנטלי מתקדם עבור {manual_ticker}...'):
+            with st.spinner(f'מנתח לעומק את {manual_ticker} ומייצר פרספקטיבת מומחים...'):
                 try:
                     t_obj = yf.Ticker(manual_ticker)
                     info = t_obj.info
                     
-                    df_d = yf.download(manual_ticker, period="6mo", progress=False, auto_adjust=True)
-                    df_w = yf.download(manual_ticker, period="1y", interval="1wk", progress=False, auto_adjust=True)
+                    df_d = yf.download(manual_ticker, period="6mo", progress=False, group_by="ticker", auto_adjust=True)
+                    df_w = yf.download(manual_ticker, period="1y", interval="1wk", progress=False, group_by="ticker", auto_adjust=True)
                     
                     if isinstance(df_d.columns, pd.MultiIndex):
                         df_d.columns = df_d.columns.get_level_values(0)
@@ -165,7 +165,6 @@ with tab2:
                         ema21 = float(close_s.ewm(span=21, adjust=False).mean().iloc[-1])
                         
                         weekly_positive = False
-                        w_details = {}
                         if df_w is not None and not df_w.empty and len(df_w) >= 10:
                             w_close = df_w['Close'].dropna()
                             w_ema10 = w_close.ewm(span=10, adjust=False).mean()
@@ -179,7 +178,6 @@ with tab2:
                             s4 = w_sma200.iloc[-1] > w_sma200.iloc[-2] if not pd.isna(w_sma200.iloc[-1]) else True
                             
                             weekly_positive = s1 and s2 and s3 and s4
-                            w_details = {"EMA 10": s1, "EMA 21": s2, "SMA 50": s3, "SMA 200": s4}
 
                         resistance = float(high_s.iloc[-21:-1].max())
                         if close >= resistance * 0.98:
@@ -245,6 +243,54 @@ with tab2:
                                 st.markdown(f"* **יכולת שירות חוב:** רמת מינוף גבוהה יחסית ({debt_txt}) 🟡")
                                 
                             st.markdown(f"**שורה תחתונה:** {ai_verdict}")
+
+                        st.markdown("---")
+                        st.markdown("### 🏛️ השולחן העגול: דעות מומחי 'מומנטום מאסטרס' על המניה")
+                        
+                        # טבלת דעות המומחים
+                        experts_data = [
+                            {
+                                "מומחה": "מארק מינרוויני",
+                                "נקודת קניה (Buy)": f"קנייה בפריצה מדויקת או פולבק בתוך תבנית VCP סמוך ל-${entry_price:.2f}",
+                                "סטופ (Stop Loss)": "סטופ הדוק בטווח של 5%-7% או מתחת לתמיכה האחרונה[cite: 1]",
+                                "נקודת יציאה (Exit)": "מימוש חלק לתוך עוצמה או סטופ מנטלי לפי הפרת מבנה טכני[cite: 1]"
+                            },
+                            {
+                                "מומחה": "דייוויד ראיין",
+                                "נקודת קניה (Buy)": f"בחינת בסיס מחיר הדוק סביב ${entry_price:.2f} עם נפח מסחר עולה[cite: 1]",
+                                "סטופ (Stop Loss)": "הפסד מקסימלי של 8% או שבירת ממוצע נע 21 יום[cite: 1]",
+                                "נקודת יציאה (Exit)": "יציאה הדרגתית לפי חולשה בשוק הכללי או ירידת חוזק יחסי[cite: 1]"
+                            },
+                            {
+                                "מומחה": "דן זנגר",
+                                "נקודת קניה (Buy)": f"פריצה אגרסיבית עם מחזור כבד מעל אזור ההתנגדות סביב ${entry_price:.2f}[cite: 1]",
+                                "סטופ (Stop Loss)": "סטופ צמוד מאוד (3%-5%) מתחת למחיר הכניסה או שבירת EMA21[cite: 1]",
+                                "נקודת יציאה (Exit)": "מכירה מהירה לתוך עליות חזקות או שבירת תמיכה מהירה[cite: 1]"
+                            },
+                            {
+                                "מומחה": "מארק ריצ'י השני",
+                                "נקודת קניה (Buy)": f"כניסה ממושמעת בטווח קרוב לשיא בהתאם למבנה השוק ולתבנית VCP סביב ${entry_price:.2f}[cite: 1]",
+                                "סטופ (Stop Loss)": "סטופ מבוסס סטטיסטיקה ואחוזים חד-ספרתיים בינוניים[cite: 1]",
+                                "נקודת יציאה (Exit)": "מימוש חלקי כשהרווח הוא פי 2 מהסיכון, וניהול נגרר[cite: 1]"
+                            }
+                        ]
+                        
+                        st.dataframe(pd.DataFrame(experts_data), use_container_width=True)
+
+                        # פסקת סיכום המלצה סופית
+                        st.markdown("### 📌 סיכום המלצה סופית על בסיס דעות המאסטרים:")
+                        if weekly_positive and is_growing and score >= 4:
+                            summary_text = (
+                                f"על בסיס משנתם של מחברי הספר 'מומנטום מאסטרס', המניה **{company_name} ({manual_ticker})** עונה על הקריטריונים המחמירים של מניות מובילות. "
+                                f"הן מבחינת המבנה הטכני בגרף היומי והשבועי (שיפוע חיובי מלא בממוצעים) והן מבחינת נתוני הצמיחה ויכולת שירות החוב, המאסטרים היו ממליצים להיערך לכניסה אסטרטגית מבוקרת. "
+                                f"מומלץ לפתוח פוזיציה בקרבת מחיר הכניסה המחושב (${entry_price:.2f}), להקפיד על ניהול סיכונים קפדני עם סטופ מוגדר מראש, ולתת למומנטום לעבוד תוך מימוש חלקי לתוך עוצמה."
+                            )
+                        else:
+                            summary_text = (
+                                f"לפי עקרונותיהם של מומחי 'מומנטום מאסטרס', המניה **{company_name} ({manual_ticker})** מציגה כרגע סימנים מעורבים או שאינה עומדת במלוא התנאים המחמירים (כגון היעדר שיפוע חיובי מלא בכל הממוצעים או פונדמנטליים גבוליים). "
+                                f"במצב כזה, גישתם של המאסטרים דורשת משמעת גבוהה: יש להמתין בסבלנות להשלמת התבנית או לשבת על הידיים, שכן ניסיון להיכנס לעסקה בתנאים לא מושלמים נושא סיכון מוגבר בניגוד לכללי ניהול הסיכון הקשוחים של השיטה."
+                            )
+                        st.info(summary_text)
 
                     else:
                         st.error("לא נמצאו נתונים מספיקים עבור הסימול שהוזן.")
