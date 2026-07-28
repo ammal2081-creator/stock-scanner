@@ -162,8 +162,8 @@ with tab2:
                     t_obj = yf.Ticker(manual_ticker)
                     info = t_obj.info
                     
-                    df_d = yf.download(manual_ticker, period="6mo", progress=False, auto_adjust=True)
-                    df_w = yf.download(manual_ticker, period="1y", interval="1wk", progress=False, auto_adjust=True)
+                    df_d = yf.download(manual_ticker, period="6mo", progress=False, group_by="ticker", auto_adjust=True)
+                    df_w = yf.download(manual_ticker, period="1y", interval="1wk", progress=False, group_by="ticker", auto_adjust=True)
                     
                     close_s = safe_extract(df_d, 'Close')
                     high_s = safe_extract(df_d, 'High')
@@ -172,7 +172,7 @@ with tab2:
                     if close_s.empty or len(close_s) < 10:
                         st.error(f"שגיאה: שרת Yahoo Finance לא החזיר נתונים עבור הסימול {manual_ticker} (ייתכן עומס או חסימת IP זמנית). נסה שוב בעוד מספר רגעים.")
                     elif len(close_s) <= 50:
-                        st.warning(ోf"נמצאו רק {len(close_s)} ימי מסחר עבור {manual_ticker}. נדרשים לפחות 50 ימים לצורך חישוב ממוצעים מדויקים.")
+                        st.warning(f"נמצאו רק {len(close_s)} ימי מסחר עבור {manual_ticker}. נדרשים לפחות 50 ימים לצורך חישוב ממוצעים מדויקים.")
                     else:
                         close = float(close_s.iloc[-1])
                         prev_close = float(close_s.iloc[-2])
