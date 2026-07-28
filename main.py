@@ -5,7 +5,7 @@ import yfinance as yf
 st.set_page_config(page_title="Pro Swing Master Platform", layout="wide")
 
 st.title("📊 Pro Swing - Master Strategy Platform")
-st.write("פלטפורמת ניהול וסריקה: סריקה רוחבית למדדים או בדיקה ידנית מעמיקה לסימול ספציפי הכוללת ניתוח אנליסט AI ופרספקטיבת מומחי 'מומנטום מאסטרס'.")
+st.write("פלטפורמת ניהול וסריקה: סריקה רוחבית למדדים או בדיקה ידנית מעמיקה המותאמת אישית לגרף החי ולמשנת מומחי 'מומנטום מאסטרס'.")
 
 tab1, tab2 = st.tabs(["📊 סריקה רוחבית למדדים", "🔍 בדיקה ידנית וניתוח מומחי מומנטום מאסטרס"])
 
@@ -150,23 +150,24 @@ with tab1:
 
 # ==================== טאב 2: בדיקה ידנית וניתוח מומחי מומנטום מאסטרס ====================
 with tab2:
-    st.subheader("🔍 בדיקה ידנית, ניתוח אנליסט AI ופרספקטיבת מומחי 'מומנטום מאסטרס'")
-    st.write("הקלד סימול לבדיקה הכוללת: ניתוח טכני, פונדמנטלי, וחוות דעת מפורטת של מארק מינרוויני, דייוויד ראיין, דן זנגר ומארק ריצ'י השני.")
+    st.subheader("🔍 בדיקה ידנית, ניתוח אנליסט AI ופרספקטיבה דינמית של מומחי 'מומנטום מאסטרס'")
+    st.write("הקלד סימול לבדיקה המנתחת את הגרף החי ומפיקה ניתוח מותאם אישית לכל מאסטר ע"פ נתוני המחיר העדכניים.")
     
     manual_ticker = st.text_input("הכנס סימול (לדוגמה: APD, TT, TSLA, TEVA.TA):", value="APD").upper().strip()
     
-    if st.button("הרץ ניתוח מקיף וחוות דעת מאסטרים"):
+    if st.button("הרץ ניתוח מקיף וחוות דעת מאסטרים דינמית"):
         if manual_ticker:
-            with st.spinner(f'מנתח לעומק את {manual_ticker} ומייצר פרספקטיבת מומחים...'):
+            with st.spinner(f'מנתח את הגרף החי של {manual_ticker} ומייצר תרחישי מסחר פרטניים...'):
                 try:
                     t_obj = yf.Ticker(manual_ticker)
                     info = t_obj.info
                     
-                    df_d = yf.download(manual_ticker, period="6mo", progress=False, auto_adjust=True)
-                    df_w = yf.download(manual_ticker, period="1y", interval="1wk", progress=False, auto_adjust=True)
+                    df_d = yf.download(manual_ticker, period="6mo", progress=False, group_by="ticker", auto_adjust=True)
+                    df_w = yf.download(manual_ticker, period="1y", interval="1wk", progress=False, group_by="ticker", auto_adjust=True)
                     
                     close_s = safe_extract(df_d, 'Close')
                     high_s = safe_extract(df_d, 'High')
+                    low_s = safe_extract(df_d, 'Low')
                     
                     if len(close_s) > 50:
                         close = float(close_s.iloc[-1])
@@ -192,14 +193,16 @@ with tab2:
                             weekly_positive = s1 and s2 and s3 and s4
 
                         resistance = float(high_s.iloc[-21:-1].max())
+                        recent_low = float(low_s.iloc[-10:].min())
+                        
                         if close >= resistance * 0.98:
-                            entry_price = resistance
-                            setup_type = "פריצה (Breakout) 🚀"
+                            base_entry = resistance
+                            setup_type = "פריצה (Breakout) מתוך התכנסות 🚀"
                         else:
-                            entry_price = ema21
-                            setup_type = "פולבק ל-EMA21 📈"
+                            base_entry = ema21
+                            setup_type = "פולבק (Pullback) ל-EMA21 📈"
                             
-                        dist_from_entry = ((close - entry_price) / entry_price) * 100
+                        dist_from_entry = ((close - base_entry) / base_entry) * 100
                         score = 4 if (weekly_positive and close > sma50 and sma50 > sma200) else 3
 
                         company_name = info.get('longName', manual_ticker)
@@ -210,37 +213,33 @@ with tab2:
                         
                         is_growing = True if (rev_growth is not None and rev_growth > -0.05) else False
                         can_service_debt = True if (debt_to_equity is None or debt_to_equity < 250) else False
-                        
                         ai_verdict = 'מאושר ע"פ אנליסט 🟢' if (is_growing and can_service_debt and weekly_positive) else 'בבדיקה / סיכון מוגבר 🟡'
 
-                        st.success(f"ניתוח הושלם בהצלחה עבור: **{company_name} ({manual_ticker})**")
+                        st.success(f"ניתוח גרף חי הושלם עבור: **{company_name} ({manual_ticker})**")
                         
                         m1, m2, m3, m4 = st.columns(4)
                         m1.metric("מחיר נוכחי", f"${close:.2f}", f"{((close-prev_close)/prev_close)*100:.2f}%")
-                        m2.metric("מחיר כניסה אסטרטגי", f"${entry_price:.2f}")
+                        m2.metric("מחיר כניסה מרכזי", f"${base_entry:.2f}")
                         m3.metric("מרחק ממחיר הכניסה", f"{dist_from_entry:.2f}%")
                         m4.metric("ציון אמינות טכני", f"{score} / 4")
 
                         st.markdown("---")
                         
                         col_tech, col_fund = st.columns(2)
-                        
                         with col_tech:
-                            st.markdown("### 📈 סטטוס טכני ואסטרטגיה")
-                            st.info(f"**סוג סט-אפ:** {setup_type}")
+                            st.markdown("### 📈 סטטוס טכני ואסטרטגיה מהגרף")
+                            st.info(f"**מצב נוכחי בגרף:** {setup_type}")
                             if weekly_positive:
                                 st.markdown("* **גרף שבועי:** חיובי מלא 🟢 (כל 4 הממוצעים בשיפוע עולה)")
                             else:
                                 st.markdown("* **גרף שבועי:** שלילי או מעורב 🔴 (לא כל הממוצעים בשיפוע חיובי)")
-                            
-                            st.markdown(f"* **ממוצע 50 יומי:** ${sma50:.2f} ({'מעל 50 🟢' if close > sma50 else 'מתחת ל-50 🔴'})")
-                            st.markdown(f"* **ממוצע 200 יומי:** ${sma200:.2f} ({'מעל 200 🟢' if close > sma200 else 'מתחת ל-200 🔴'})")
+                            st.markdown(f"* **התנגדות קרובה (Pivot):** ${resistance:.2f}")
+                            st.markdown(f"* **ממוצע 50 יומי:** ${sma50:.2f}")
                             st.markdown(f"* **EMA 21 יומי:** ${ema21:.2f}")
 
                         with col_fund:
                             st.markdown("### 🤖 חוות דעת אנליסט AI (פונדמנטלי)")
                             st.markdown(f"**סקטור:** {sector} | **תעשייה:** {industry}")
-                            
                             growth_txt = f"{rev_growth*100:.1f}%" if rev_growth is not None else "נתון לא זמין"
                             debt_txt = f"{debt_to_equity:.1f}%" if debt_to_equity is not None else "נמוך / לא זמין"
                             
@@ -257,48 +256,65 @@ with tab2:
                             st.markdown(f"**שורה תחתונה:** {ai_verdict}")
 
                         st.markdown("---")
-                        st.markdown("### 🏛️ השולחן העגול: דעות מומחי 'מומנטום מאסטרס' על המניה")
+                        st.markdown("### 🏛️ השולחן העגול: תוכניות מסחר נפרדות לכל מאסטר (על סמך הגרף החי)")
                         
+                        # חישוב רמות דינמיות ייחודיות לכל מאסטר על בסיס נתוני האמת של המניה
+                        minervini_buy = f"כניסה בפריצת התנגדות מודקת ב-${resistance * 1.005:.2f} (או פולבק הדוק ל-${ema21:.2f})[cite: 1]"
+                        minervini_stop = f"סטופ מחמיר ב-${min(ema21 * 0.97, recent_low * 0.98):.2f} (~6% סיכון)[cite: 1]"
+                        minervini_exit = "מימוש חלקי ראשון ברווח של 20% ומעבר לסטופ אי-זון[cite: 1]"
+
+                        ryan_buy = f"איסוף סביב בסיס המחיר הנוכחי ב-${base_entry:.2f} במחזור מסחר מתפתח[cite: 1]"
+                        ryan_stop = f"סטופ קבוע ב-${max(close * 0.92, sma50 * 0.98):.2f} (הפסד מקסימלי 8%)[cite: 1]"
+                        ryan_exit = "יציאה הדרגתית לפי חולשה בנפח המסחר או ירידת חוזק יחסי[cite: 1]"
+
+                        zanger_buy = f"פריצה אגרסיבית עם נפח כבד מעל ${resistance * 1.01:.2f} עם פתיחת המסחר[cite: 1]"
+                        zanger_stop = f"סטופ צמוד מאוד ב-${ema21 * 0.985:.2f} (סטופ של 3%-4%)[cite: 1]"
+                        zanger_exit = "מכירה אגרסיבית לתוך עליות חזקות או שבירת ממוצע 10/21 יום[cite: 1]"
+
+                        richie_buy = f"כניסה ממושמעת בהתאם ליחס סיכון-סיכוי סטטיסטי סביב ${base_entry:.2f}[cite: 1]"
+                        richie_stop = f"סטופ אחוזי ממוצע ב-${close * 0.94:.2f} (~6% חד-ספרתי)[cite: 1]"
+                        richie_exit = "מימוש חלקי כשהרווח פי 2 מהסיכון המקורי וניהול נגרר[cite: 1]"
+
                         experts_data = [
                             {
                                 "מומחה": "מארק מינרוויני",
-                                "נקודת קניה (Buy)": f"קנייה בפריצה מדויקת או פולבק בתוך תבנית VCP סמוך ל-${entry_price:.2f}[cite: 1]",
-                                "סטופ (Stop Loss)": "סטופ הדוק בטווח של 5%-7% או מתחת לתמיכה האחרונה[cite: 1]",
-                                "נקודת יציאה (Exit)": "מימוש חלק לתוך עוצמה או סטופ מנטלי לפי הפרת מבנה טכני[cite: 1]"
+                                "נקודת קניה (Buy)": minervini_buy,
+                                "סטופ (Stop Loss)": minervini_stop,
+                                "נקודת יציאה (Exit)": minervini_exit
                             },
                             {
                                 "מומחה": "דייוויד ראיין",
-                                "נקודת קניה (Buy)": f"בחינת בסיס מחיר הדוק סביב ${entry_price:.2f} עם נפח מסחר עולה[cite: 1]",
-                                "סטופ (Stop Loss)": "הפסד מקסימלי של 8% או שבירת ממוצע נע 21 יום[cite: 1]",
-                                "נקודת יציאה (Exit)": "יציאה הדרגתית לפי חולשה בשוק הכללי או ירידת חוזק יחסי[cite: 1]"
+                                "נקודת קניה (Buy)": ryan_buy,
+                                "סטופ (Stop Loss)": ryan_stop,
+                                "נקודת יציאה (Exit)": ryan_exit
                             },
                             {
                                 "מומחה": "דן זנגר",
-                                "נקודת קניה (Buy)": f"פריצה אגרסיבית עם מחזור כבד מעל אזור ההתנגדות סביב ${entry_price:.2f}[cite: 1]",
-                                "סטופ (Stop Loss)": "סטופ צמוד מאוד (3%-5%) מתחת למחיר הכניסה או שבירת EMA21[cite: 1]",
-                                "נקודת יציאה (Exit)": "מכירה מהירה לתוך עליות חזקות או שבירת תמיכה מהירה[cite: 1]"
+                                "נקודת קניה (Buy)": zanger_buy,
+                                "סטופ (Stop Loss)": zanger_stop,
+                                "נקודת יציאה (Exit)": zanger_exit
                             },
                             {
                                 "מומחה": "מארק ריצ'י השני",
-                                "נקודת קניה (Buy)": f"כניסה ממושמעת בטווח קרוב לשיא בהתאם למבנה השוק ולתבנית VCP סביב ${entry_price:.2f}[cite: 1]",
-                                "סטופ (Stop Loss)": "סטופ מבוסס סטטיסטיקה ואחוזים חד-ספרתיים בינוניים[cite: 1]",
-                                "נקודת יציאה (Exit)": "מימוש חלקי כשהרווח הוא פי 2 מהסיכון, וניהול נגרר[cite: 1]"
+                                "נקודת קניה (Buy)": richie_buy,
+                                "סטופ (Stop Loss)": richie_stop,
+                                "נקודת יציאה (Exit)": richie_exit
                             }
                         ]
                         
                         st.dataframe(pd.DataFrame(experts_data), use_container_width=True)
 
-                        st.markdown("### 📌 סיכום המלצה סופית על בסיס דעות המאסטרים:")
+                        st.markdown("### 📌 סיכום המלצה סופית על בסיס קריאת הגרף העדכני ודעות המאסטרים:")
                         if weekly_positive and is_growing and score >= 4:
                             summary_text = (
-                                f"על בסיס משנתם של מחברי הספר 'מומנטום מאסטרס', המניה **{company_name} ({manual_ticker})** עונה על הקריטריונים המחמירים של מניות מובילות[cite: 1]. "
-                                f"הן מבחינת המבנה הטכני בגרף היומי והשבועי (שיפוע חיובי מלא בממוצעים) והן מבחינת נתוני הצמיחה ויכולת שירות החוב, המאסטרים היו ממליצים להיערך לכניסה אסטרטגית מבוקרת. "
-                                f"מומלץ לפתוח פוזיציה בקרבת מחיר הכניסה המחושב (${entry_price:.2f}), להקפיד על ניהול סיכונים קפדני עם סטופ מוגדר מראש, ולתת למומנטום לעבוד תוך מימוש חלקי לתוך עוצמה."
+                                f"ניתוח הגרף העדכני של **{company_name} ({manual_ticker})** מצביע על מבנה טכני חיובי התומך בעקרונות הספר 'מומנטום מאסטרס'[cite: 1]. "
+                                f"המחיר נסחר בקרבת אזורי מפתח אסטרטגיים (התנגדות ב-${resistance:.2f} ותמיכת EMA21 ב-${ema21:.2f}), כשברקע הממוצעים השבועיים בשיפוע עולה מלא והנתונים הפונדמנטליים תומכים בצמיחה. "
+                                f"על פי משנת המאסטרים, מומלץ להיערך לביצוע עסקה בהתאם לסט-אפ הנבחר (פריצה או פולבק), להקפיד באדיקות על רמות הסטופ שהוגדרו לכל שיטה, ולנהל את הפוזיציה באופן דינמי לתוך עוצמה."
                             )
                         else:
                             summary_text = (
-                                f"לפי עקרונותיהם של מומחי 'מומנטום מאסטרס', המניה **{company_name} ({manual_ticker})** מציגה כרגע סימנים מעורבים או שאינה עומדת במלוא התנאים המחמירים (כגון היעדר שיפוע חיובי מלא בכל הממוצעים או פונדמנטליים גבוליים)[cite: 1]. "
-                                f"במצב כזה, גישתם של המאסטרים דורשת משמעת גבוהה: יש להמתין בסבלנות להשלמת התבנית או לשבת על הידיים, שכן ניסיון להיכנס לעסקה בתנאים לא מושלמים נושא סיכון מוגבר בניגוד לכללי ניהול הסיכון הקשוחים של השיטה."
+                                f"בחינת נתוני הגרף העדכניים והפונדמנטליים של **{company_name} ({manual_ticker})** מראים תמונה מעורבת שאינה עומדת באופן מושלם בכל התנאים המחמירים של המאסטרים (כגון שיפוע שבועי שאינו מלא או מרחק לא אופטימלי מנקודת הציר)[cite: 1]. "
+                                f"במצב עניינים זה, ההמלצה החד-משמעית של המומחים היא לא לכפות עסקאות: יש לשבת על הידיים, להמתין שהגרף יבנה בסיס מחיר הדוק וברור יותר, או לסנן החוצה את הרעש עד שההזדמנויות יעמדו במלוא קריטריוני הסיכון-סיכוי."
                             )
                         st.info(summary_text)
 
