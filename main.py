@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import yfinance as yf
+import requests
 
 st.set_page_config(page_title="Pro Swing Master Platform", layout="wide")
 
@@ -8,6 +9,18 @@ st.title("📊 Pro Swing - Master Strategy Platform")
 st.write("פלטפורמת ניהול וסריקה: סריקה רוחבית למדדים או בדיקה ידנית מעמיקה המותאמת אישית לגרף החי ולמשנת מומחי 'מומנטום מאסטרס'.")
 
 tab1, tab2 = st.tabs(["📊 סריקה רוחבית למדדים", "🔍 בדיקה ידנית וניתוח מומחי מומנטום מאסטרס"])
+
+# יצירת סשן מותאם עם User-Agent למניעת חסימות Rate Limit מול Yahoo Finance
+session = requests.Session()
+session.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+
+@st.cache_data(ttl=300)
+def fetch_data(ticker, period, interval="1d"):
+    try:
+        df = yf.download(ticker, period=period, interval=interval, progress=False, auto_adjust=True, session=session)
+        return df
+    except Exception:
+        return pd.DataFrame()
 
 def safe_extract(df, col_name):
     """ פונקציית עזר חסינה לחילוץ עמודות מנתחי yfinance """
@@ -73,8 +86,8 @@ with tab1:
                 progress_bar.progress((b_idx + 1) / total_batches)
                 
                 try:
-                    data_daily = yf.download(batch, period="6mo", progress=False, group_by="ticker", auto_adjust=True)
-                    data_weekly = yf.download(batch, period="1y", interval="1wk", progress=False, group_by="ticker", auto_adjust=True)
+                    data_daily = yf.download(batch, period="6mo", progress=False, group_by="ticker", auto_adjust=True, session=session)
+                    data_weekly = yf.download(batch, period="1y", interval="1wk", progress=False, group_by="ticker", auto_adjust=True, session=session)
                     
                     for ticker in batch:
                         try:
@@ -159,18 +172,18 @@ with tab2:
         if manual_ticker:
             with st.spinner(f'מנתח את הגרף החי של {manual_ticker} ומייצר תרחישי מסחר פרטניים...'):
                 try:
-                    t_obj = yf.Ticker(manual_ticker)
+                    t_obj = yf.Ticker(manual_ticker, session=session)
                     info = t_obj.info
                     
-                    df_d = yf.download(manual_ticker, period="6mo", progress=False, group_by="ticker", auto_adjust=True)
-                    df_w = yf.download(manual_ticker, period="1y", interval="1wk", progress=False, group_by="ticker", auto_adjust=True)
+                    df_d = fetch_data(manual_ticker, period="6mo", interval="1d")
+                    df_w = fetch_data(manual_ticker, period="1y", interval="1wk")
                     
                     close_s = safe_extract(df_d, 'Close')
                     high_s = safe_extract(df_d, 'High')
                     low_s = safe_extract(df_d, 'Low')
                     
                     if close_s.empty or len(close_s) < 10:
-                        st.error(f"שגיאה: שרת Yahoo Finance לא החזיר נתונים עבור הסימול {manual_ticker} (ייתכן עומס או חסימת IP זמנית). נסה שוב בעוד מספר רגעים.")
+                        st.error(f"שגיאה: שרת Yahoo Finance הגביל את הבקשה כרגע (Rate Limited / Too Many Requests) עבור הסימול {manual_ticker}. המתן מספר שניות ונסה שוב.")
                     elif len(close_s) <= 50:
                         st.warning(f"נמצאו רק {len(close_s)} ימי מסחר עבור {manual_ticker}. נדרשים לפחות 50 ימים לצורך חישוב ממוצעים מדויקים.")
                     else:
